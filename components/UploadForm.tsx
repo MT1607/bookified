@@ -76,7 +76,7 @@ const UploadForm = () => {
         return;
       }
 
-      const uploadPdfBlod = await upload(fileTitle, pdfFile, {
+      const uploadPdfBlod = await upload(`${fileTitle}.pdf`, pdfFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
         contentType: 'application/pdf',
