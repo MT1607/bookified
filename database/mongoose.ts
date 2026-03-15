@@ -1,7 +1,6 @@
 import mongoose, { Mongoose } from 'mongoose';
 
 const MONGO_URI = process.env.MONGODB_URI;
-
 interface MongooseConnection {
   conn: Mongoose | null;
   promise: Promise<Mongoose> | null;

@@ -91,6 +91,7 @@ export const formatDuration = (seconds: number): string => {
 };
 
 export async function parsePDFFile(file: File) {
+  console.log('file: ', file);
   try {
     const pdfjsLib = await import('pdfjs-dist');
 

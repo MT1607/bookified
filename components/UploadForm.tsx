@@ -68,7 +68,7 @@ const UploadForm = () => {
       }
 
       const fileTitle = values.title.replace(/\s/g, '-').toLowerCase();
-      const pdfFile = values.pdfFile[0];
+      const pdfFile = values.pdfFile;
       const parsedPDF = await parsePDFFile(pdfFile);
 
       if (parsedPDF.content.length === 0) {
