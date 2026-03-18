@@ -37,7 +37,24 @@ import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 
 const UploadForm = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadState, setUploadState] = useState<{
+    status: 'idle' | 'in-progress' | 'completed' | 'error';
+    title: string;
+    description: string;
+  }>({
+    status: 'idle',
+    title: '',
+    description: '',
+  });
+
+  const updateUploadState = (
+    status: 'idle' | 'in-progress' | 'completed' | 'error',
+    title: string,
+    description: string
+  ) => {
+    setUploadState({ status, title, description });
+  };
+
   const { userId } = useAuth();
   const router = useRouter();
 
@@ -56,26 +73,53 @@ const UploadForm = () => {
   const onSubmit = async (values: BookFormValues) => {
     if (!userId) return toast.error('Please login to continue');
 
+    updateUploadState(
+      'in-progress',
+      'Starting Upload',
+      'Checking book details...'
+    );
+
     // Post
     try {
       const existCheck = await checkBookExist(values.title);
 
       if (existCheck.exists && existCheck.book) {
-        toast.error('Book already exists');
-        form.reset();
-        router.push(`/books/${existCheck.book.slug}`);
+        updateUploadState(
+          'error',
+          'Book Exists',
+          'This book already exists in our database.'
+        );
+        setTimeout(() => {
+          updateUploadState('idle', '', '');
+          form.reset();
+          router.push(`/books/${existCheck.book.slug}`);
+        }, 2000);
         return;
       }
 
+      updateUploadState(
+        'in-progress',
+        'Preparing File',
+        'Parsing PDF contents...'
+      );
       const fileTitle = values.title.replace(/\s/g, '-').toLowerCase();
       const pdfFile = values.pdfFile;
       const parsedPDF = await parsePDFFile(pdfFile);
 
       if (parsedPDF.content.length === 0) {
-        toast.error('Failed to parse PDF file. Please try again later.');
+        updateUploadState(
+          'error',
+          'Parse Error',
+          'Failed to parse PDF file. Please try again later.'
+        );
         return;
       }
 
+      updateUploadState(
+        'in-progress',
+        'Uploading PDF',
+        'Uploading file to Vercel Blob...'
+      );
       const uploadPdfBlod = await upload(`${fileTitle}.pdf`, pdfFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
@@ -83,6 +127,11 @@ const UploadForm = () => {
       });
 
       let coverUrl: string;
+      updateUploadState(
+        'in-progress',
+        'Uploading Cover',
+        'Processing book cover image...'
+      );
       if (values.coverImage && values.coverImage.length > 0) {
         const coverImage = values.coverImage[0];
         const uploadCoverImageBlod = await upload(
@@ -110,6 +159,11 @@ const UploadForm = () => {
         coverUrl = uploadCoverImageBlod.url;
       }
 
+      updateUploadState(
+        'in-progress',
+        'Saving to Database',
+        'Creating book record in MongoDB...'
+      );
       const book = await createBook({
         clerkId: userId,
         title: values.title,
@@ -125,12 +179,21 @@ const UploadForm = () => {
       if (!book.success) throw new Error('Failed to upload book');
 
       if (book.alreadyExists) {
-        toast.info('Book aldredy exists');
-        form.reset();
-        router.push(`/books/${existCheck.book.slug}`);
+        updateUploadState('error', 'Book Exists', 'This book already exists.');
+        setTimeout(() => {
+          updateUploadState('idle', '', '');
+          form.reset();
+          // Use existCheck since book might not return slug in alreadyExists depending on type
+          router.push(`/`);
+        }, 2000);
         return;
       }
 
+      updateUploadState(
+        'in-progress',
+        'Synthesizing Book',
+        'Saving book segments...'
+      );
       const segments = await saveBookSegments(
         book.data._id,
         parsedPDF.content,
@@ -138,24 +201,39 @@ const UploadForm = () => {
       );
 
       if (!segments?.success) {
-        toast.error('Failed to save book segment');
         throw new Error('Failed to save book segments');
       }
 
-      toast.success('Book uploaded successfully');
-      form.reset();
-      router.push(`/`);
+      updateUploadState(
+        'completed',
+        'Upload Successful',
+        'Book has been uploaded successfully!'
+      );
+      setTimeout(() => {
+        updateUploadState('idle', '', '');
+        form.reset();
+        router.push(`/`);
+      }, 2000);
     } catch (error) {
       console.log(error);
-      toast.error('Failed to upload book. Please try again later.');
-    } finally {
-      setIsSubmitting(false);
+      updateUploadState(
+        'error',
+        'Upload Failed',
+        'Failed to upload book. Please try again later.'
+      );
     }
   };
 
   return (
     <div className="new-book-wrapper">
-      {isSubmitting && <LoadingOverlay />}
+      {uploadState.status !== 'idle' && (
+        <LoadingOverlay
+          status={uploadState.status}
+          title={uploadState.title}
+          description={uploadState.description}
+          onClose={() => updateUploadState('idle', '', '')}
+        />
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
