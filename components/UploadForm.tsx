@@ -35,25 +35,15 @@ import {
 } from '@/lib/actions/book.actions';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
+import { useUploadStore } from '@/store/useUploadStore';
 
 const UploadForm = () => {
-  const [uploadState, setUploadState] = useState<{
-    status: 'idle' | 'in-progress' | 'completed' | 'error';
-    title: string;
-    description: string;
-  }>({
-    status: 'idle',
-    title: '',
-    description: '',
-  });
-
-  const updateUploadState = (
-    status: 'idle' | 'in-progress' | 'completed' | 'error',
-    title: string,
-    description: string
-  ) => {
-    setUploadState({ status, title, description });
-  };
+  const {
+    status: uploadStatus,
+    title: uploadTitle,
+    description: uploadDesc,
+    setUploadState: updateUploadState,
+  } = useUploadStore();
 
   const { userId } = useAuth();
   const router = useRouter();
@@ -226,11 +216,11 @@ const UploadForm = () => {
 
   return (
     <div className="new-book-wrapper">
-      {uploadState.status !== 'idle' && (
+      {uploadStatus !== 'idle' && (
         <LoadingOverlay
-          status={uploadState.status}
-          title={uploadState.title}
-          description={uploadState.description}
+          status={uploadStatus}
+          title={uploadTitle}
+          description={uploadDesc}
           onClose={() => updateUploadState('idle', '', '')}
         />
       )}
