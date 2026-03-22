@@ -126,3 +126,29 @@ export const saveBookSegments = async (
     );
   }
 };
+
+export const getBookBySlug = async (slug: string) => {
+  try {
+    await connectToDatabase();
+
+    const book = await Book.findOne({ slug }).lean();
+
+    if (book) {
+      return {
+        success: true,
+        data: serializeData(book),
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Book not found',
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      error: error,
+    };
+  }
+};
