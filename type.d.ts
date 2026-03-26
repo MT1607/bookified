@@ -119,3 +119,21 @@ export interface FileUploadFieldProps<T extends FieldValues> {
   placeholder: string;
   hint: string;
 }
+
+// export type PlanType = 'free' | 'premium' | string;
+
+export interface SessionCheckResult {
+  allowed: boolean;
+  currentCount: number;
+  limit: number;
+  plan: PlanType;
+  maxDurationMinutes: number;
+  error?: string;
+}
+
+export interface StartSessionResult {
+  success: boolean;
+  sessionId?: string;
+  maxDurationMinutes?: number;
+  error?: string;
+}

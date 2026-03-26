@@ -393,7 +393,7 @@
     @apply mb-3 flex items-center gap-2 rounded-[14px] bg-[#f3e4c7] p-3;
   }
   .vapi-transcript-wrapper {
-    @apply flex max-h-[60vh] min-h-[400px] flex-col;
+    @apply flex w-full max-h-[60vh] min-h-[400px] flex-col;
   }
   .vapi-cover-wrapper {
     @apply relative shrink-0;
