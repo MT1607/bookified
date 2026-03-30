@@ -1,4 +1,6 @@
 'use server';
+import { auth } from '@clerk/nextjs/server';
+import { getUserPlan, checkBookLimit } from '../utils/subscription';
 import { connectToDatabase } from '@/database/mongoose';
 import { CreateBook, TextSegment } from '@/type';
 import { success } from 'zod';
@@ -67,7 +69,23 @@ export const createBook = async (data: CreateBook) => {
         alreadyExists: true,
       };
     }
-    // Todo: check subcription limits
+
+    const { has } = await auth();
+    const userPlan = getUserPlan(has);
+    const existingBooksCount = await Book.countDocuments({
+      clerkId: data.clerkId,
+    });
+    const limitCheck = checkBookLimit(existingBooksCount, userPlan);
+
+    console.log('limit check: ', limitCheck);
+
+    if (!limitCheck.allowed) {
+      console.error('user plan: ', userPlan);
+      return {
+        success: false,
+        error: `Book limit reached for your ${userPlan} plan. Please upgrade to add more books.`,
+      };
+    }
 
     const book = await Book.create({
       ...data,
@@ -143,6 +161,40 @@ export const getBookBySlug = async (slug: string) => {
     return {
       success: false,
       error: 'Book not found',
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      error: error,
+    };
+  }
+};
+
+export const searchBookSegments = async (
+  bookId: string,
+  query: string,
+  limit: number = 3
+) => {
+  try {
+    await connectToDatabase();
+
+    console.log('Searching book segments ... ', bookId, query);
+
+    const segments = await BookSegment.find(
+      {
+        bookId,
+        $text: { $search: query },
+      },
+      { score: { $meta: 'textScore' } }
+    )
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(limit)
+      .lean();
+
+    return {
+      success: true,
+      data: serializeData(segments),
     };
   } catch (error) {
     console.error(error);

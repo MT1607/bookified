@@ -3,7 +3,9 @@
 import VoiceSession from '@/database/models/voice-session.model';
 import { connectToDatabase } from '@/database/mongoose';
 import { StartSessionResult } from '@/type';
-import { getCurrentBillingPeriodStart } from '../subcriptions-contants';
+import { auth } from '@clerk/nextjs/server';
+import { getUserPlan, checkSessionLimit } from '../utils/subscription';
+import { getCurrentBillingPeriodStart } from '../constants/subscriptions';
 
 export const startVoiceSession = async (
   clerkId: string,
@@ -12,18 +14,36 @@ export const startVoiceSession = async (
   try {
     await connectToDatabase();
 
-    // Limits/Plan to see whether a session is allowed
+    const { has } = await auth();
+    const userPlan = getUserPlan(has);
+    const billingPeriodStart = getCurrentBillingPeriodStart();
+    
+    const existingSessionsCount = await VoiceSession.countDocuments({ 
+      clerkId,
+      billingPeriodStart: { $gte: billingPeriodStart }
+    });
+    
+    const limitCheck = checkSessionLimit(existingSessionsCount, userPlan);
+
+    if (!limitCheck.allowed) {
+      return {
+        success: false,
+        error: `Session limit reached for your ${userPlan} plan. Please upgrade to start more sessions.`,
+      };
+    }
+
     const session = await VoiceSession.create({
       clerkId,
       bookId,
       startedAt: new Date(),
-      billingPeriodStart: getCurrentBillingPeriodStart(),
+      billingPeriodStart,
       durationSeconds: 0,
     });
 
     return {
       success: true,
       sessionId: session._id.toString(),
+      maxDurationMinutes: limitCheck.maxDurationMinutes,
     };
   } catch (error) {
     console.error('Error starting voice session: ', error);

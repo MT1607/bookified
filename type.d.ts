@@ -120,7 +120,7 @@ export interface FileUploadFieldProps<T extends FieldValues> {
   hint: string;
 }
 
-// export type PlanType = 'free' | 'premium' | string;
+export type PlanType = 'free' | 'standard' | 'pro';
 
 export interface SessionCheckResult {
   allowed: boolean;

@@ -20,6 +20,10 @@ const navItems = [
     label: 'Add New',
     href: '/books/new',
   },
+  {
+    label: 'Pricing',
+    href: '/subscriptions',
+  },
 ];
 
 function Navbar() {
@@ -63,9 +67,9 @@ function Navbar() {
             <Show when="signed-in">
               <UserButton />
               {user?.firstName && (
-                <Link href="/subcriptions" className="nav-user-name">
-                  {user.firstName}
-                </Link>
+                <span className="nav-user-name">
+                  {user.fullName || user.firstName}
+                </span>
               )}
             </Show>
           </div>
